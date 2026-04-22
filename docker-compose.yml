@@ -1,0 +1,24 @@
+version: '3.8'
+
+services:
+  angel-agent:
+    build: .
+    container_name: angel-trading-agent
+    environment:
+      - API_KEY=${API_KEY}
+      - CLIENT_ID=${CLIENT_ID}
+      - PASSWORD=${PASSWORD}
+      - TOTP_SECRET=${TOTP_SECRET}
+      - SYMBOL=${SYMBOL:-RELIANCE}
+      - EXCHANGE=${EXCHANGE:-NSE}
+      - INTERVAL=${INTERVAL:-FIVE_MINUTE}
+    volumes:
+      - ./logs:/app/logs
+      - ./output:/app/output
+    restart: always
+    networks:
+      - trading-network
+
+networks:
+  trading-network:
+    driver: bridge

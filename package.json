@@ -1,0 +1,16 @@
+{
+  "name": "angel-agent",
+  "version": "1.0.0",
+  "description": "Angel One Intraday Trading Signal Agent",
+  "main": "agent.py",
+  "scripts": {
+    "start": "python agent.py",
+    "dev": "python agent.py --symbol INFY --interval FIVE_MINUTE"
+  },
+  "keywords": ["trading", "angel-one", "signals", "intraday"],
+  "author": "Your Name",
+  "license": "MIT",
+  "engines": {
+    "python": "3.10"
+  }
+}
