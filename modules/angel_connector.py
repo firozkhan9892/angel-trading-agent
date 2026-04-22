@@ -74,7 +74,7 @@ class AngelConnector:
         exchange: str = "NSE",
         interval: str = "FIVE_MINUTE",
         days: int = 5
-    ) -> pd.DataFrame:
+    ) -> list:
         """
         Fetch OHLCV historical candle data.
 
@@ -85,9 +85,11 @@ class AngelConnector:
             days         : How many past days of data to fetch
 
         Returns:
-            pd.DataFrame with columns [timestamp, open, high, low, close, volume]
+            List of dicts with [timestamp, open, high, low, close, volume]
         """
         try:
+            from datetime import datetime, timedelta
+
             to_date   = datetime.now()
             from_date = to_date - timedelta(days=days)
 
@@ -102,21 +104,26 @@ class AngelConnector:
             response = self.smart_api.getCandleData(params)
 
             if response["status"]:
-                df = pd.DataFrame(
-                    response["data"],
-                    columns=["timestamp", "open", "high", "low", "close", "volume"]
-                )
-                df["timestamp"] = pd.to_datetime(df["timestamp"])
-                df = df.sort_values("timestamp").reset_index(drop=True)
-                logger.info(f"📊 Fetched {len(df)} candles for token {symbol_token}")
-                return df
+                data = []
+                for candle in response["data"]:
+                    data.append({
+                        "timestamp": candle[0],
+                        "open": float(candle[1]),
+                        "high": float(candle[2]),
+                        "low": float(candle[3]),
+                        "close": float(candle[4]),
+                        "volume": int(candle[5])
+                    })
+
+                logger.info(f"Fetched {len(data)} candles for token {symbol_token}")
+                return data
             else:
-                logger.error(f"❌ Data fetch failed: {response['message']}")
-                return pd.DataFrame()
+                logger.error(f"Data fetch failed: {response['message']}")
+                return []
 
         except Exception as e:
-            logger.error(f"❌ Historical data exception: {e}")
-            return pd.DataFrame()
+            logger.error(f"Historical data exception: {e}")
+            return []
 
     def get_ltp(self, exchange: str, symbol: str, symbol_token: str) -> float:
         """Get Last Traded Price (LTP) for a symbol."""

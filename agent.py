@@ -139,8 +139,8 @@ def run_agent(symbol: str, token: str, exchange: str, interval: str):
                 days=5,
             )
 
-            if df.empty:
-                logger.warning("⚠️  Empty data received — skipping this scan.")
+            if not df:
+                logger.warning("Empty data received — skipping this scan.")
                 time.sleep(60)
                 continue
 
@@ -183,13 +183,17 @@ def run_agent(symbol: str, token: str, exchange: str, interval: str):
                 "target":     signal.target,
                 "sl":         signal.sl,
             }
-            import pandas as pd
-            pd.DataFrame([row]).to_csv(
-                "output/signals_log.csv",
-                mode="a",
-                header=not os.path.exists("output/signals_log.csv"),
-                index=False,
-            )
+
+            # Write to CSV manually
+            import csv
+            csv_file = "output/signals_log.csv"
+            file_exists = os.path.exists(csv_file)
+
+            with open(csv_file, 'a', newline='') as f:
+                writer = csv.DictWriter(f, fieldnames=row.keys())
+                if not file_exists:
+                    writer.writeheader()
+                writer.writerow(row)
 
             # 6. Wait for next candle
             logger.info(f"⏳ Next scan in {sleep_secs // 60} min(s)…")
