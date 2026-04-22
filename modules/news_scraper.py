@@ -1,6 +1,6 @@
 """
 News Scraper Module
-Fetches real company news, orders, and announcements from NewsAPI
+Fetches real company news, orders, and announcements from Finnhub
 """
 
 import requests
@@ -12,16 +12,16 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
-class NewsScraperNewsAPI:
-    """Fetch real news from NewsAPI."""
+class NewsScraperFinnhub:
+    """Fetch real news from Finnhub API."""
 
-    API_KEY = os.getenv("NEWS_API_KEY", "demo")
-    BASE_URL = "https://newsapi.org/v2/everything"
+    API_KEY = os.getenv("FINNHUB_API_KEY", "")
+    BASE_URL = "https://finnhub.io/api/v1/company-news"
 
     @staticmethod
     def get_company_news(symbol: str, limit: int = 5) -> list:
         """
-        Fetch real news using NewsAPI.
+        Fetch real news using Finnhub API.
 
         Args:
             symbol: Stock symbol (e.g., 'RELIANCE', 'INFY')
@@ -31,41 +31,45 @@ class NewsScraperNewsAPI:
             List of news with title, date, link, source
         """
         try:
-            # Search for company orders, contracts, wins
-            query = f"{symbol} order OR contract OR wins OR bags OR secures"
+            if not NewsScraperFinnhub.API_KEY:
+                logger.warning("Finnhub API key not set")
+                return []
 
             params = {
-                "q": query,
-                "sortBy": "publishedAt",
-                "language": "en",
-                "pageSize": limit,
-                "apiKey": NewsScraperNewsAPI.API_KEY,
+                "symbol": symbol.upper(),
+                "token": NewsScraperFinnhub.API_KEY,
+                "limit": limit,
             }
 
-            response = requests.get(NewsScraperNewsAPI.BASE_URL, params=params, timeout=10)
+            response = requests.get(NewsScraperFinnhub.BASE_URL, params=params, timeout=10)
 
             if response.status_code != 200:
-                logger.warning(f"NewsAPI fetch failed: {response.status_code}")
+                logger.warning(f"Finnhub fetch failed: {response.status_code}")
                 return []
 
             data = response.json()
             news_list = []
 
-            if data.get('articles'):
-                for article in data['articles'][:limit]:
-                    news_list.append({
-                        "title": article.get('title', 'N/A'),
-                        "link": article.get('url', ''),
-                        "date": article.get('publishedAt', datetime.now().strftime("%Y-%m-%d")),
-                        "source": article.get('source', {}).get('name', 'NewsAPI'),
-                        "description": article.get('description', '')
-                    })
+            if isinstance(data, list):
+                for article in data[:limit]:
+                    # Filter for order/contract news
+                    title = article.get('headline', '')
+                    keywords = ['order', 'contract', 'wins', 'bags', 'secures', 'awarded']
 
-            logger.info(f"Fetched {len(news_list)} real news from NewsAPI for {symbol}")
+                    if any(kw.lower() in title.lower() for kw in keywords):
+                        news_list.append({
+                            "title": title,
+                            "link": article.get('url', ''),
+                            "date": datetime.fromtimestamp(article.get('datetime', 0)).strftime("%Y-%m-%d"),
+                            "source": article.get('source', 'Finnhub'),
+                            "description": article.get('summary', '')
+                        })
+
+            logger.info(f"Fetched {len(news_list)} real news from Finnhub for {symbol}")
             return news_list
 
         except Exception as e:
-            logger.error(f"NewsAPI error: {e}")
+            logger.error(f"Finnhub error: {e}")
             return []
 
 
@@ -75,7 +79,7 @@ class NewsAggregator:
     @staticmethod
     def get_all_news(symbol: str, limit: int = 5) -> list:
         """
-        Fetch real news from NewsAPI.
+        Fetch real news from Finnhub.
 
         Args:
             symbol: Stock symbol
@@ -86,9 +90,9 @@ class NewsAggregator:
         """
         all_news = []
 
-        # Fetch from NewsAPI
-        api_news = NewsScraperNewsAPI.get_company_news(symbol, limit)
-        all_news.extend(api_news)
+        # Fetch from Finnhub
+        finnhub_news = NewsScraperFinnhub.get_company_news(symbol, limit * 2)
+        all_news.extend(finnhub_news)
 
         # Remove duplicates
         unique_news = {news['title']: news for news in all_news}
@@ -111,4 +115,5 @@ class NewsAggregator:
                 filtered.append(news)
 
         return filtered
+
 
