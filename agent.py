@@ -24,6 +24,7 @@ from modules.indicators        import IndicatorEngine
 from modules.signal_generator  import SignalGenerator
 from modules.telegram_notifier import TelegramNotifier
 from modules.news_scraper      import NewsAggregator
+from modules.telegram_commands import TelegramCommandHandler
 
 load_dotenv()
 
@@ -96,6 +97,7 @@ def run_agent(symbol: str, token: str, exchange: str, interval: str):
     generator = SignalGenerator()
     telegram  = TelegramNotifier()
     news_agg  = NewsAggregator()
+    cmd_handler = TelegramCommandHandler()
 
     if not connector.login():
         logger.error("Cannot start agent — login failed.")
@@ -111,12 +113,15 @@ def run_agent(symbol: str, token: str, exchange: str, interval: str):
     logger.info("💡 Free Render plan: Keep-alive pings every 10 min to prevent spin-down")
 
     try:
-        # Send startup notification (before market check)
+        # Send startup notification
         startup_sent = telegram.send_startup(symbol, interval)
         if startup_sent:
-            logger.info("✅ Telegram startup message sent!")
+            logger.info("Startup message sent!")
         else:
-            logger.warning("⚠️  Telegram startup message failed - check credentials")
+            logger.warning("Startup message failed - check credentials")
+
+        # Send help command
+        cmd_handler.send_help()
 
         while True:
             if not is_market_open():
