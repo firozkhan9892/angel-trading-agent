@@ -3,7 +3,6 @@ Buy / Sell Signal Generator
 Multi-indicator confluence scoring system for intraday signals
 """
 
-import pandas as pd
 from dataclasses import dataclass
 from logzero import logger
 
