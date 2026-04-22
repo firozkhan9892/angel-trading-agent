@@ -1,51 +1,72 @@
 """
 News Scraper Module
-Fetches company news, orders, and announcements
+Fetches real company news, orders, and announcements from NewsAPI
 """
 
 import requests
-from bs4 import BeautifulSoup
 from logzero import logger
 from datetime import datetime
-import re
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
-class NewsScraperMock:
-    """Mock news source for testing (replace with real API)."""
+class NewsScraperNewsAPI:
+    """Fetch real news from NewsAPI."""
 
-    MOCK_NEWS = {
-        "RELIANCE": [
-            {"title": "Reliance wins Rs 5000 crore order from NTPC", "source": "Economic Times"},
-            {"title": "Reliance bags new contract for renewable energy", "source": "MoneyControl"},
-            {"title": "Reliance secures major order from government", "source": "Business Today"},
-        ],
-        "INFY": [
-            {"title": "Infosys wins $500M contract from Fortune 500 company", "source": "ET"},
-            {"title": "Infosys bags new order in cloud services", "source": "MC"},
-        ],
-        "TCS": [
-            {"title": "TCS wins major IT contract", "source": "ET"},
-            {"title": "TCS secures digital transformation order", "source": "MC"},
-        ],
-    }
+    API_KEY = os.getenv("NEWS_API_KEY", "demo")
+    BASE_URL = "https://newsapi.org/v2/everything"
 
     @staticmethod
     def get_company_news(symbol: str, limit: int = 5) -> list:
-        """Get mock news for testing."""
-        symbol_upper = symbol.upper()
-        mock_news = NewsScraperMock.MOCK_NEWS.get(symbol_upper, [])
+        """
+        Fetch real news using NewsAPI.
 
-        news_list = []
-        for item in mock_news[:limit]:
-            news_list.append({
-                "title": item["title"],
-                "link": "https://example.com",
-                "date": datetime.now().strftime("%Y-%m-%d"),
-                "source": item["source"]
-            })
+        Args:
+            symbol: Stock symbol (e.g., 'RELIANCE', 'INFY')
+            limit: Number of news items
 
-        logger.info(f"Fetched {len(news_list)} mock news for {symbol}")
-        return news_list
+        Returns:
+            List of news with title, date, link, source
+        """
+        try:
+            # Search for company orders, contracts, wins
+            query = f"{symbol} order OR contract OR wins OR bags OR secures"
+
+            params = {
+                "q": query,
+                "sortBy": "publishedAt",
+                "language": "en",
+                "pageSize": limit,
+                "apiKey": NewsScraperNewsAPI.API_KEY,
+            }
+
+            response = requests.get(NewsScraperNewsAPI.BASE_URL, params=params, timeout=10)
+
+            if response.status_code != 200:
+                logger.warning(f"NewsAPI fetch failed: {response.status_code}")
+                return []
+
+            data = response.json()
+            news_list = []
+
+            if data.get('articles'):
+                for article in data['articles'][:limit]:
+                    news_list.append({
+                        "title": article.get('title', 'N/A'),
+                        "link": article.get('url', ''),
+                        "date": article.get('publishedAt', datetime.now().strftime("%Y-%m-%d")),
+                        "source": article.get('source', {}).get('name', 'NewsAPI'),
+                        "description": article.get('description', '')
+                    })
+
+            logger.info(f"Fetched {len(news_list)} real news from NewsAPI for {symbol}")
+            return news_list
+
+        except Exception as e:
+            logger.error(f"NewsAPI error: {e}")
+            return []
 
 
 class NewsAggregator:
@@ -54,22 +75,22 @@ class NewsAggregator:
     @staticmethod
     def get_all_news(symbol: str, limit: int = 5) -> list:
         """
-        Fetch news from all sources and combine.
+        Fetch real news from NewsAPI.
 
         Args:
             symbol: Stock symbol
-            limit: News items per source
+            limit: News items to fetch
 
         Returns:
-            Combined news list
+            List of real news
         """
         all_news = []
 
-        # Use mock news for now (replace with real API)
-        mock_news = NewsScraperMock.get_company_news(symbol, limit)
-        all_news.extend(mock_news)
+        # Fetch from NewsAPI
+        api_news = NewsScraperNewsAPI.get_company_news(symbol, limit)
+        all_news.extend(api_news)
 
-        # Remove duplicates and sort by date
+        # Remove duplicates
         unique_news = {news['title']: news for news in all_news}
 
         return list(unique_news.values())[:limit]
@@ -90,3 +111,4 @@ class NewsAggregator:
                 filtered.append(news)
 
         return filtered
+
