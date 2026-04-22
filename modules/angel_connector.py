@@ -4,7 +4,6 @@ Handles authentication, session management, and data fetching
 """
 
 import pyotp
-import pandas as pd
 from datetime import datetime, timedelta
 from SmartApi import SmartConnect
 from logzero import logger
